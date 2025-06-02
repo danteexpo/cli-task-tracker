@@ -25,6 +25,19 @@ export function addTask(title: string): void {
   console.log(chalk.green(`Task added: ${title}`));
 }
 
+export function updateTask(id: number, title: string): void {
+  const tasks = loadTasks();
+  const task = tasks.find((task) => task.id === id);
+  if (task) {
+    task.title = title;
+    saveTasks(tasks);
+    console.log(chalk.green(`Task updated: ${title}`));
+  } else {
+    console.log(chalk.red(`Task not found: ${id}`));
+  }
+  saveTasks(tasks);
+}
+
 export function deleteTask(id: number): void {
   let tasks = loadTasks();
   const task = tasks.find((task) => task.id === id);

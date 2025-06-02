@@ -4,98 +4,140 @@ import chalk from "chalk";
 import inquirer from "inquirer";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { addTask, deleteTask, listTasks } from "./taskManager";
+import { addTask, deleteTask, listTasks, updateTask } from "./taskManager";
+
+const handleAdd = async ({ title }: { title?: string }) => {
+  if (!title) {
+    const { title: inputTitle } = await inquirer.prompt({
+      type: "input",
+      name: "title",
+      message: "Task title:",
+    });
+    title = inputTitle;
+  }
+  if (title) {
+    addTask(title);
+  }
+};
+
+const handleUpdate = async ({ id, title }: { id?: number; title?: string }) => {
+  if (!id || !title) {
+    console.log(chalk.red("Task ID and title are required"));
+    return;
+  }
+  updateTask(id, title);
+};
+
+const handleDelete = async ({ id }: { id?: number }) => {
+  if (!id) {
+    console.log(chalk.red("Task ID is required"));
+    return;
+  }
+  deleteTask(id);
+};
+
+const handleList = () => {
+  listTasks();
+};
+
+const handleInteractive = async () => {
+  const { action } = await inquirer.prompt({
+    type: "list",
+    name: "action",
+    message: "What do you want to do?",
+    choices: ["Add Task", "Update Task", "List Tasks", "Delete Task", "Exit"],
+  });
+
+  const numberValidator = (value: any) => {
+    if (value === undefined || isNaN(value)) {
+      return "Please enter a valid number";
+    }
+    return true;
+  };
+
+  switch (action) {
+    case "Add Task": {
+      const { title } = await inquirer.prompt({
+        type: "input",
+        name: "title",
+        message: "Task title:",
+      });
+      addTask(title);
+      break;
+    }
+    case "Update Task": {
+      const { id } = await inquirer.prompt({
+        type: "number",
+        name: "id",
+        message: "Task ID:",
+        validate: numberValidator,
+      });
+      const { title } = await inquirer.prompt({
+        type: "input",
+        name: "title",
+        message: "Task title:",
+      });
+      updateTask(id, title);
+      break;
+    }
+    case "List Tasks":
+      listTasks();
+      break;
+    case "Delete Task": {
+      const { id } = await inquirer.prompt({
+        type: "number",
+        name: "id",
+        message: "Task ID:",
+        validate: numberValidator,
+      });
+      deleteTask(id);
+      break;
+    }
+    case "Exit":
+      console.log(chalk.green("Goodbye!"));
+      process.exit(0);
+  }
+};
 
 yargs(hideBin(process.argv))
   .command(
     "add [title]",
     "Add a new task",
-    (yargs) => {
-      return yargs.positional("title", {
+    {
+      title: {
         describe: "Task title",
         type: "string",
-      });
+      },
     },
-    async (argv) => {
-      let title = argv.title as string;
-
-      if (!title) {
-        const answer = await inquirer.prompt({
-          type: "input",
-          name: "title",
-          message: "Task title:",
-        });
-        title = answer.title;
-      }
-
-      addTask(title);
-    }
+    handleAdd
   )
   .command(
-    "list",
-    "List all tasks",
-    () => {},
-    () => {
-      listTasks();
-    }
+    "update <id> [title]",
+    "Update a task",
+    {
+      id: {
+        describe: "Task ID",
+        type: "number",
+      },
+      title: {
+        describe: "Task title",
+        type: "string",
+      },
+    },
+    handleUpdate
   )
   .command(
     "delete <id>",
     "Delete a task",
-    (yargs) => {
-      return yargs.positional("id", {
+    {
+      id: {
         describe: "Task ID",
         type: "number",
-      });
+      },
     },
-    (argv) => {
-      if (!argv.id) {
-        console.log(chalk.red("Task ID is required"));
-        return;
-      }
-      const id = argv.id as number;
-      deleteTask(id);
-    }
+    handleDelete
   )
-  .command(
-    "$0",
-    "Interactive mode",
-    () => {},
-    async () => {
-      const { action } = await inquirer.prompt({
-        type: "list",
-        name: "action",
-        message: "What do you want to do?",
-        choices: ["Add Task", "List Tasks", "Delete Task", "Exit"],
-      });
-
-      if (action === "Add Task") {
-        const { title } = await inquirer.prompt({
-          type: "input",
-          name: "title",
-          message: "Task title:",
-        });
-        addTask(title);
-      } else if (action === "List Tasks") {
-        listTasks();
-      } else if (action === "Delete Task") {
-        const { id } = await inquirer.prompt({
-          type: "number",
-          name: "id",
-          message: "Task ID:",
-          validate: (value) => {
-            if (value === undefined || isNaN(value)) {
-              return "Please enter a valid number";
-            }
-            return true;
-          },
-        });
-        deleteTask(id);
-      } else if (action === "Exit") {
-        console.log(chalk.green("Goodbye!"));
-        process.exit(0);
-      }
-    }
-  )
+  .command("list", "List all tasks", () => {}, handleList)
+  .command("$0", "Interactive mode", () => {}, handleInteractive)
   .help()
   .parse();
